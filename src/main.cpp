@@ -57,8 +57,12 @@ void loop()
 	// Valor mudou de 0 para 1
 	if (value == LOW && digitalRead(IN_SIGNAL) == HIGH)
 	{
-		digitalWrite(OUT_SIGNAL, HIGH);
 		delay(halfWave / waveFraction);
+		digitalWrite(OUT_SIGNAL, HIGH);
+	}
+
+	if (value == HIGH && digitalRead(IN_SIGNAL) == LOW)
+	{
 		digitalWrite(OUT_SIGNAL, LOW);
 	}
 
