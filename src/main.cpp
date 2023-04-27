@@ -10,16 +10,14 @@
 
 AsyncWebServer server(80);
 
-float value;
+// Valor do último tick da onda de entrada
+float_t previousWaveValue;
 
 // Fração desejada da onda de entrada (2 = 1/2; 4 = 1/4; etc)
-unsigned int waveFraction = 2;
+int8_t waveFraction = 2;
 
-// Duração de uma onda completa
-const float fullWave = 16.66; // ms
-
-// Duração de uma meia onda
-const float halfWave = fullWave / 2; // ms
+// Cálculo do tempo necessário para a fração da onda ser concluída
+float_t period = (1 / waveFraction) / 60;
 
 void setup()
 {
@@ -55,17 +53,17 @@ void setup()
 void loop()
 {
 	// Valor mudou de 0 para 1
-	if (value == LOW && digitalRead(IN_SIGNAL) == HIGH)
+	if (previousWaveValue == LOW && digitalRead(IN_SIGNAL) == HIGH)
 	{
-		delay(halfWave / waveFraction);
+		delay(period * 1000); // Multiplicação necessária para transformar em ms
 		digitalWrite(OUT_SIGNAL, HIGH);
 	}
 
-	if (value == HIGH && digitalRead(IN_SIGNAL) == LOW)
+	if (previousWaveValue == HIGH && digitalRead(IN_SIGNAL) == LOW)
 	{
 		digitalWrite(OUT_SIGNAL, LOW);
 	}
 
 	// Armazena o valor da onda (0 || 1)
-	value = digitalRead(IN_SIGNAL);
+	previousWaveValue = digitalRead(IN_SIGNAL);
 }
