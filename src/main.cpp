@@ -9,19 +9,22 @@
 #define OUT_SIGNAL 4
 
 AsyncWebServer server(80);
-
-// Valor do último tick da onda de entrada
-float_t previousWaveValue;
+AsyncWebSocket ws("/ws");
 
 // Fração desejada da onda de entrada (2 = 1/2; 4 = 1/4; etc)
 int8_t waveFraction = 2;
 
-// Cálculo do tempo necessário para a fração da onda ser concluída
-float_t period = (1 / waveFraction) / 60;
-
 void setup()
 {
 	Serial.begin(115200);
+
+	Serial.println("Aguardando 2 segundos...");
+	delay(2000);
+
+	int frequency = getCpuFrequencyMhz();
+	Serial.print("Frequencia da CPU: ");
+	Serial.print(frequency);
+	Serial.println(" MHz");
 
 	pinMode(IN_SIGNAL, INPUT);
 	pinMode(OUT_SIGNAL, OUTPUT);
@@ -36,34 +39,46 @@ void setup()
 			  {
 		if (req->hasParam("fraction")) {
 			waveFraction = std::atoi(req->getParam("fraction")->value().c_str());
-
-			Serial.print("Fracao recebida: ");
-			Serial.println(req->getParam("fraction")->value());
-			Serial.print("Fracao transformada: ");
-			Serial.println(std::atoi(req->getParam("fraction")->value().c_str()));
-
 			req->send(200, "text/plain", "Seus dados foram recebidos.");
 		} else {
 			req->send(400, "text/plain", "Envie os dados necessarios.");
 		} });
 
 	server.begin();
+	server.addHandler(&ws);
 }
+
+// Valor do último tick da onda de entrada
+float_t previousWaveValue;
+
+// Valor atual da onda de entrada
+int currentWaveValue;
 
 void loop()
 {
+	ws.cleanupClients();
+
+	// Cálculo do tempo necessário para a fração da onda ser concluída
+	float_t period = (1 / waveFraction) / 60;
+
+	currentWaveValue = digitalRead(IN_SIGNAL);
+
+	ws.printfAll("%i:%i", waveFraction, currentWaveValue);
+
 	// Valor mudou de 0 para 1
-	if (previousWaveValue == LOW && digitalRead(IN_SIGNAL) == HIGH)
+	if (previousWaveValue == LOW && currentWaveValue == HIGH)
 	{
 		delay(period * 1000); // Multiplicação necessária para transformar em ms
 		digitalWrite(OUT_SIGNAL, HIGH);
+		ws.textAll("--> 1");
 	}
 
-	if (previousWaveValue == HIGH && digitalRead(IN_SIGNAL) == LOW)
+	if (previousWaveValue == HIGH && currentWaveValue == LOW)
 	{
 		digitalWrite(OUT_SIGNAL, LOW);
+		ws.textAll("--> 0");
 	}
 
 	// Armazena o valor da onda (0 || 1)
-	previousWaveValue = digitalRead(IN_SIGNAL);
+	previousWaveValue = currentWaveValue;
 }
