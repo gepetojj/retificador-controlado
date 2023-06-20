@@ -12,19 +12,56 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 // Fração desejada da onda de entrada (2 = 1/2; 4 = 1/4; etc)
-int8_t waveFraction = 2;
+u_int8_t waveFraction = 2;
+u_int8_t previousWaveValue = 0;
+u_int8_t currentWaveValue = 0;
+u_int8_t currentOutputValue = 0;
+
+float fullPeriod = 1 * 0.01666;
+float halfPeriod = fullPeriod * 0.5;
+
+void onDataHandler(void *arg, uint8_t *data, size_t len)
+{
+	AwsFrameInfo *info = (AwsFrameInfo *)arg;
+
+	if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
+	{
+		data[len] = 0;
+		if (strcmp((char *)data, "data") == 0)
+		{
+			Serial.print("Fracao da onda: ");
+			Serial.println(waveFraction);
+			Serial.print("Valor da entrada: ");
+			Serial.println(currentWaveValue);
+			Serial.print("Valor da saida: ");
+			Serial.println(currentOutputValue);
+			Serial.println();
+
+			ws.printfAll("%i:%i:%i", waveFraction, currentWaveValue, currentOutputValue);
+		}
+	}
+}
+
+void onEventHandler(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len)
+{
+	switch (type)
+	{
+	case WS_EVT_DATA:
+		onDataHandler(arg, data, len);
+		break;
+
+	case WS_EVT_ERROR:
+		Serial.println("Houve um erro na comunicacao WebSocket.");
+		break;
+
+	default:
+		break;
+	}
+}
 
 void setup()
 {
 	Serial.begin(115200);
-
-	Serial.println("Aguardando 2 segundos...");
-	delay(2000);
-
-	int frequency = getCpuFrequencyMhz();
-	Serial.print("Frequencia da CPU: ");
-	Serial.print(frequency);
-	Serial.println(" MHz");
 
 	pinMode(IN_SIGNAL, INPUT);
 	pinMode(OUT_SIGNAL, OUTPUT);
@@ -45,38 +82,35 @@ void setup()
 		} });
 
 	server.begin();
+	ws.onEvent(onEventHandler);
 	server.addHandler(&ws);
 }
-
-// Valor do último tick da onda de entrada
-float_t previousWaveValue;
-
-// Valor atual da onda de entrada
-int currentWaveValue;
 
 void loop()
 {
 	ws.cleanupClients();
 
-	// Cálculo do tempo necessário para a fração da onda ser concluída
-	float_t period = (1 / waveFraction) / 60;
+	// Divisão da meia onda pela fração desejada
+	double fraction = halfPeriod / waveFraction;
+	// Tempo de espera em segundos
+	double waitSeconds = fraction * (waveFraction - 1);
+	// Tempo de espera em microsegundos
+	float waitMicroseconds = waitSeconds * 1000000;
 
 	currentWaveValue = digitalRead(IN_SIGNAL);
-
-	ws.printfAll("%i:%i", waveFraction, currentWaveValue);
 
 	// Valor mudou de 0 para 1
 	if (previousWaveValue == LOW && currentWaveValue == HIGH)
 	{
-		delay(period * 1000); // Multiplicação necessária para transformar em ms
+		delayMicroseconds(waitMicroseconds);
 		digitalWrite(OUT_SIGNAL, HIGH);
-		ws.textAll("--> 1");
+		currentOutputValue = HIGH;
 	}
 
 	if (previousWaveValue == HIGH && currentWaveValue == LOW)
 	{
 		digitalWrite(OUT_SIGNAL, LOW);
-		ws.textAll("--> 0");
+		currentOutputValue = LOW;
 	}
 
 	// Armazena o valor da onda (0 || 1)

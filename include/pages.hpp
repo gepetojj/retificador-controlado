@@ -99,7 +99,8 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 
 			<div>
 				<h2>Valor atual da fração: <span id="wave-fraction">?</span></h2>
-				<h2>Valor atual da onda: <span id="wave-value">?</span></h2>
+				<h2>Valor atual da entrada: <span id="wave-output">?</span></h2>
+				<h2>Valor atual da saída: <span id="wave-input">?</span></h2>
 			</div>
 		</main>
 
@@ -137,7 +138,9 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 
 		<script>
 			let fraction = 0;
-			let value = 0;
+			let inputVal = 0;
+			let output = 0;
+			let dataInterval;
 
 			const statusEl = document.getElementById("status");
 			const statusText = document.getElementById("status-text");
@@ -151,6 +154,11 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 				statusText.innerText = "Conectado.";
 
 				console.log("Conectado ao websocket:", event);
+
+				dataInterval = setInterval(() => {
+					if (!socket.readyState) return;
+					socket.send("data");
+				}, 100);
 			};
 
 			socket.onerror = (event) => {
@@ -158,6 +166,7 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 				statusText.innerText = "Erro na conexão.";
 
 				console.log("Erro no websocket:", event);
+				clearInterval(dataInterval);
 			};
 
 			socket.onmessage = (event) => {
@@ -165,10 +174,12 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 				console.log("Mensagem recebida:", data);
 
 				fraction = Number(data.split(":")[0]) || fraction;
-				value = Number(data.split(":")[1]) || value;
+				inputVal = Number(data.split(":")[1]) || inputVal;
+				output = Number(data.split(":")[2]) || output;
 
 				document.getElementById("wave-fraction").innerText = fraction;
-				document.getElementById("wave-value").innerText = value;
+				document.getElementById("wave-input").innerText = inputVal;
+				document.getElementById("wave-output").innerText = output;
 			};
 		</script>
 	</body>
