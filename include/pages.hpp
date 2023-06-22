@@ -174,8 +174,8 @@ const char MAIN_PAGE[] PROGMEM = R"rawliteral(
 				console.log("Mensagem recebida:", data);
 
 				fraction = Number(data.split(":")[0]) || fraction;
-				inputVal = Number(data.split(":")[1]) || inputVal;
-				output = Number(data.split(":")[2]) || output;
+				inputVal = Number(data.split(":")[1]) == 1 ? 1 : 0;
+				output = Number(data.split(":")[2]) == 1 ? 1 : 0;
 
 				document.getElementById("wave-fraction").innerText = fraction;
 				document.getElementById("wave-input").innerText = inputVal;
