@@ -20,6 +20,13 @@ u_int8_t currentOutputValue = 0;
 float fullPeriod = 1 * 0.01666;
 float halfPeriod = fullPeriod * 0.5;
 
+// Divisão da meia onda pela fração desejada
+double fraction = 0;
+// Tempo de espera em segundos
+double waitSeconds = 0;
+// Tempo de espera em microsegundos
+float waitMicroseconds = 0;
+
 void onDataHandler(void *arg, uint8_t *data, size_t len)
 {
 	AwsFrameInfo *info = (AwsFrameInfo *)arg;
@@ -29,13 +36,22 @@ void onDataHandler(void *arg, uint8_t *data, size_t len)
 		data[len] = 0;
 		if (strcmp((char *)data, "data") == 0)
 		{
+			Serial.println("-------------------------");
 			Serial.print("Fracao da onda: ");
 			Serial.println(waveFraction);
 			Serial.print("Valor da entrada: ");
 			Serial.println(currentWaveValue);
 			Serial.print("Valor da saida: ");
 			Serial.println(currentOutputValue);
-			Serial.println();
+			Serial.print("Tempo de meio periodo: ");
+			Serial.println(halfPeriod, 5);
+			Serial.print("Meia onda dividida pela fracao: ");
+			Serial.println(fraction, 5);
+			Serial.print("Tempo de espera em segundos: ");
+			Serial.println(waitSeconds, 5);
+			Serial.print("Tempo de espera em microsegundos: ");
+			Serial.println(waitMicroseconds);
+			Serial.println("-------------------------");
 
 			ws.printfAll("%i:%i:%i", waveFraction, currentWaveValue, currentOutputValue);
 		}
@@ -90,12 +106,9 @@ void loop()
 {
 	ws.cleanupClients();
 
-	// Divisão da meia onda pela fração desejada
-	double fraction = halfPeriod / waveFraction;
-	// Tempo de espera em segundos
-	double waitSeconds = fraction * (waveFraction - 1);
-	// Tempo de espera em microsegundos
-	float waitMicroseconds = waitSeconds * 1000000;
+	fraction = halfPeriod / waveFraction;
+	waitSeconds = fraction * (waveFraction - 1);
+	waitMicroseconds = waitSeconds * 1000000;
 
 	currentWaveValue = digitalRead(IN_SIGNAL);
 
